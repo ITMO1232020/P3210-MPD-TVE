@@ -28,10 +28,7 @@ export default new VueRouter({
             name: 'auth-page',
             component: registration,
             beforeEnter: (to, from, next) => {
-                if (!localStorage.getItem("accessToken") && !localStorage.getItem("refreshToken")) next();
-                else next({
-                    name: 'app-page',
-                });
+                (localStorage.getItem("accessToken") && localStorage.getItem("refreshToken")) ? next({name: 'app-page'}) : next()
             }
 
         },
