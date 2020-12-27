@@ -78,7 +78,7 @@
     }
 
     .text__title {
-      font-size: 62px;
+      font-size: 45px;
       line-height: 32px;
     }
 

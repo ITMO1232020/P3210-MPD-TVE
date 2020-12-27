@@ -15,22 +15,29 @@
           <form id="result">
             <fieldset ref="x" title="Значение параметра x должно быть целым числом в пределах -5 до 3">
               <label>x</label>
-              <select v-model="result.x" required="true">
-                <option v-for="value in xValues" >{{ value }}</option>
-              </select>
+              <label>
+                <select v-model="result.x" required="true">
+                  <option v-for="value in xValues" >{{ value }}</option>
+                </select>
+              </label>
             </fieldset>
             <fieldset ref="y" title="Значение параметра y должно быть целым число в интервале от -3 до 5">
               <label>y</label>
-              <input type="text" placeholder="y in (-3, 5)" v-model="result.y" required="true" />
+              <label>
+                <input type="text" placeholder="y in (-3, 5)" :maxlength="9" v-model="result.y" required="true" />
+              </label>
             </fieldset>
             <fieldset ref="r" title="Значение параметра r должно быть целым числом в пределах от 1 до 3">
               <label>r</label>
-              <select v-model="result.r" required="true">
-                <option v-for="value in xValues">{{ value }}</option>
-              </select>
+              <label>
+                <select v-model="result.r" required="true">
+                  <option v-for="value in xValues">{{ value }}</option>
+                </select>
+              </label>
             </fieldset>
             <fieldset class="inlines__align--center">
               <button @click.prevent="check" class="btn">проверить</button>
+              <button @click.prevent="signout" class="btn">выйти</button>
             </fieldset>
           </form>
         </div>
@@ -46,6 +53,8 @@
 <script>
 import resultscontainer from '@/components/temp_base/results_container'
 import loader from '@/components/temp_base/loader'
+
+const baseURL = 'http://localhost:41143/';
 
 const baseValues = ['1', '2', '3'];
   const maxRadius = 4;
@@ -68,9 +77,9 @@ const baseValues = ['1', '2', '3'];
         results: [],
         isLoading: true,
         queries: {
-          add: '/main/app/add',
-          refresh: '/api/refresh/token',
-          retrieve: '/main/app/dots/all',
+          add: 'main/app/add',
+          refresh: 'api/refresh/token',
+          retrieve: 'main/app/dots/all',
         },
         counter: 4,
       };
@@ -312,9 +321,9 @@ const baseValues = ['1', '2', '3'];
         const isFloat = floatRegex.test(value);
         console.log(`float?: ${isFloat}`);
         console.log(`not NaN?: ${!isNaN(float)}`);
-        const isLess = (float <= this.yMaximum - Number.EPSILON);
+        const isLess = (float <= this.yMaximum);
         console.log(`less?: ${isLess}`);
-        const isMore = (float >= this.yMinimal + Number.EPSILON);
+        const isMore = (float >= this.yMinimal);
         console.log(`more?: ${isMore}`);
         return isFloat && !isNaN(float) && isLess && isMore;
       },
@@ -327,12 +336,15 @@ const baseValues = ['1', '2', '3'];
       fetchToken: async function(repeat, ...args) {
 
         console.log('fetching tokens from server...');
-        let response = await fetch(this.queries.refresh, {
+        let response = await fetch(baseURL + this.queries.refresh, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json;charset=utf-8'
           },
-          body: JSON.stringify({ refreshToken : this.$session.get(this.refresh)}),
+         //body: JSON.stringify({ refreshToken : this.$session.get(this.refresh)}),
+           body: JSON.stringify({ refreshToken : localStorage.getItem("refreshToken")}),
+        }).catch(function (){
+          alert("Error while getting token. Check your connection")
         });
 
         console.log('check if response is ok');
@@ -342,7 +354,8 @@ const baseValues = ['1', '2', '3'];
           console.log('getting json object...');
           let json = await response.json();
           if (json) {
-            this.$session.set(this.access, json.accessToken);
+            //this.$session.set(this.access, json.accessToken);
+            localStorage.setItem("accessToken", json.accessToken);
             window.location.reload();
             repeat = repeat.bind(this);
             console.log('repeating losed operation...');
@@ -363,13 +376,16 @@ const baseValues = ['1', '2', '3'];
         console.log(`new result is ready to send: ${this.result}`);
 
         console.log('sending data...');
-        let response = await fetch(this.queries.add, {
+        let response = await fetch(baseURL + this.queries.add, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json;charset=utf-8',
-            'shell_token': this.$session.get(this.access),
+            //'shell_token': this.$session.get(this.access),
+            'shell_token': localStorage.getItem("accessToken"),
           },
           body: JSON.stringify(this.result)
+        }).catch(function (){
+          alert("Error while getting response. Check your connection")
         });
 
         console.log('request sent -- checking if response is ok (201)');
@@ -392,11 +408,13 @@ const baseValues = ['1', '2', '3'];
           } catch (e) {
             console.error(e);
             console.error(`bad respond object: ${e.data}`);
+            alert(`bad respond object: ${e.data}`);
           } finally {
             console.log('fetching new result finished');
           }
         } else if (response.status === 403) {
           console.error('access token expired');
+          alert('access token expired');
           console.log('fetching new token pair...');
           await this.fetchToken(this.fetchResult);
 
@@ -518,14 +536,14 @@ const baseValues = ['1', '2', '3'];
           console.log('valid radius value');
           let area = this.$refs.area;
           const rect = area.getBoundingClientRect();
-          console.log(`canvas: (${area.width}:${area.height})`);
+          console.log(`canvas: (${area.clientWidth}:${area.clientHeight})`);
 
           console.log('getting x coordinate');
           const realX = event.clientX - rect.left;
           console.log(`mouse x: ${ realX }`);
 
           console.log('translating to x value');
-          const x = this.translateTo(realX, area.width, maxRadius, part);
+          const x = this.translateTo(realX, area.clientWidth, maxRadius, part);
           console.log(`x translated to: ${ x }`);
           this.result.x = x;
 
@@ -534,7 +552,7 @@ const baseValues = ['1', '2', '3'];
           console.log(`mouse y: ${ realY }`);
 
           console.log('translating to y value');
-          const y = -this.translateTo(realY, area.height, maxRadius, part);
+          const y = -this.translateTo(realY, area.clientHeight, maxRadius, part);
           console.log(`y translated to: ${ y }`);
           this.result.y = y;
 
@@ -546,18 +564,26 @@ const baseValues = ['1', '2', '3'];
 
       signout: function(event) {
         console.log('close current session...');
-        this.$session.clear();
-        window.location.reload();
+        //this.$session.clear();
+        localStorage.clear();
+        document.getElementById('logo_btn').innerHTML="";
+        //window.location.reload();
+        this.$router.push({name: 'auth-page'});
+        window.scrollTo(0,0);
+
       },
 
       retrieve: async function() {
+
         console.log('getting results with unique token...');
 
-        let response = await fetch(this.queries.retrieve, {
+        let response = await fetch(baseURL + this.queries.retrieve, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json;charset=utf-8',
-            'shell_token': this.$session.get(this.access),
+            //'shell_token': this.$session.get(this.access),
+            'shell_token': localStorage.getItem("accessToken")
+
           },
           body: JSON.stringify(this.accessToken)
         });
@@ -568,7 +594,7 @@ const baseValues = ['1', '2', '3'];
           console.log('getting the json object...');
           let json = await response.json();
           this.results = json;
-        } else if (response.status == '403') {
+        } else if (response.status === '403') {
           console.log('access token expired...');
           await this.fetchToken(this.retrieve);
         } else {
@@ -577,16 +603,19 @@ const baseValues = ['1', '2', '3'];
         this.isLoading = false;
       },
       createExitButton: function() {
-        let exit = document.createElement("a");
-        exit.innerHTML = 'Выйти';
-        exit.setAttribute('class', 'btn logo_btn');
-        exit.onclick = this.signout;
-        let logo = document.getElementById('logo_btn');
-        logo.appendChild(exit);
+        if(document.getElementById('logo_btn').innerHTML === '')
+        {
+          let exit = document.createElement("a");
+          exit.innerHTML = 'Выйти';
+          exit.setAttribute('class', 'btn logo_btn');
+          exit.onclick = this.signout;
+          let logo = document.getElementById('logo_btn');
+          logo.appendChild(exit);
+        }
       },
     },
     mounted() {
-      this.createExitButton();
+      //this.createExitButton();
       this.retrieve();
       this.redraw(this.radius);
     },
@@ -634,12 +663,12 @@ const baseValues = ['1', '2', '3'];
     margin: 10% 2%;
   }
 
-  .btn{
+  #logo_btn{
     font-family: "Jost", sans-serif;
     margin-right: 30px;
   }
 
-  .btn:hover {
+  #logo_btn:hover {
     background-color: #5e808f;
   }
 

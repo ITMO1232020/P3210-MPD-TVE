@@ -20,6 +20,7 @@
 </template>
 
 <script>
+  const baseURL = 'http://localhost:41143/';
   export default {
     name: 'loging',
     props: ['access', 'refresh'],
@@ -54,12 +55,14 @@
         console.log(`user: ${this.user}`);
 
         console.log('fetching tokens from server...');
-        let response = await fetch(this.queries.signin, {
+        let response = await fetch(baseURL+this.queries.signin, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json;charset=utf-8',
           },
           body: JSON.stringify(this.user)
+        }).catch(function (){
+          alert("Error while authentication. Check your connection")
         });
 
         let json = null;
@@ -80,11 +83,15 @@
           } else {
             console.log(`got user access-token`);
             console.log(`got user refresh-token`);
+            localStorage.setItem("accessToken", json.accessToken);
+            localStorage.setItem("refreshToken", json.refreshToken);
 
             this.$session.set(this.access, json.accessToken);
             this.$session.set(this.refresh, json.refreshToken);
+            //console.log(this.$session.get(this.access)+"   "+this.$session.get(this.refresh))
 
-            window.location.reload();
+            //window.location.reload();
+            this.$router.push({name: 'app-page'});
           }
         } else this.createMessage(`*${json.description}`);
       },
@@ -101,12 +108,14 @@
         console.log(`user: ${this.user}`);
         
         console.log('fetching tokens from server...');
-        let response = await fetch(this.queries.register, {
+        let response = await fetch(baseURL+this.queries.register, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json;charset=utf-8',
           },
           body: JSON.stringify(this.user)
+        }).catch(function (){
+          alert("Error while getting token. Check your connection")
         });
 
         console.log('sent request');
@@ -128,11 +137,14 @@
           else {
             console.log('got user access-token');
             console.log('get user refresh-token');
+            localStorage.setItem("accessToken", json.accessToken);
+            localStorage.setItem("refreshToken", json.refreshToken);
 
             this.$session.set(this.access, json.accessToken);
             this.$session.set(this.refresh, json.refreshToken);
 
-            window.location.reload();
+            //window.location.reload();
+            this.$router.push({name: 'app-page'});
           }
         } else {
             this.createMessage(`*${json.description}`);
@@ -202,7 +214,6 @@
     padding: 2% 5%;
     background-color: #3e606f;
     color: #eaeaea;
-    font-family: 'Pacifico', cursive;
     font-size: 18px;
   }
 
